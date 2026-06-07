@@ -1,0 +1,557 @@
+<html>
+<head>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+
+
+
+    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+
+
+<script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras/dist/aframe-extras.min.js"></script>
+    
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            // Variables y constantes comunes
+            const myTarget0 = document.querySelector('#mytarget0');
+            myTarget0.addEventListener('targetLost', event => {
+                let audio = document.querySelector("#mySound");
+                audio.pause();
+            });
+            const sceneEl = document.querySelector("a-scene");
+            const startButton = document.querySelector("#example-start-button");
+            let arSystem;
+            let isStarted = false; // define isStarted
+            let isPaused = true; // define isPaused
+
+            // Controladores de eventos comunes
+            sceneEl.addEventListener("loaded", function () {
+                arSystem = sceneEl.systems["mindar-image-system"];
+            });
+
+            startButton.addEventListener("click", () => {
+                console.log("start");
+                if (!isStarted) {
+                    // check if isStarted
+                    arSystem.start(); // start AR
+                    isStarted = true; // set isStarted to true
+                    /*                     document.querySelector("#example-scanning-overlay").classList.remove("hidden"); // show the overlay
+                     */
+                    document.querySelector("body").classList.add("no-background"); // remove the background
+                }
+            });
+
+            sceneEl.addEventListener("arReady", (event) => { });
+
+            sceneEl.addEventListener("arError", (event) => { });
+
+            // Variables y constantes específicas de audio
+            const examplePlane0 = document.querySelector("#example-plane-0");
+            const pauseSphere = document.querySelector("#example-pause-sphere");
+
+            const audio = document.querySelector("#mySound");
+            const sphere = document.querySelector("#example-pause-sphere");
+            let selectedModelId = "example-plane-0"; // Inicialmente selecciona el modelo 'ego-audio-video'
+            let isMouseDown = false;
+
+            // Funciones específicas de audio
+            function pauseOrResumeAnimation(modelId) {
+                let model = document.querySelector(modelId);
+                let animationMixer = model.components["animation-mixer"];
+                if (isPaused) {
+                    animationMixer.pause();
+                } else {
+                    animationMixer.play();
+                }
+            }
+
+            function changeSphereColor() {
+                pauseColor = isPaused ? "red" : "green";
+                pauseSphere.setAttribute("color", pauseColor);
+            }
+
+            // Controladores de eventos específicos de audio
+            pauseSphere.addEventListener("click", () => {
+                selectedModelId = "example-plane-0";
+                isPaused = !isPaused;
+                pauseOrResumeAnimation("#" + selectedModelId);
+                changeSphereColor();
+            });
+
+            examplePlane0.addEventListener("click", () => {
+                selectedModelId = "example-plane-0";
+                isPaused = !isPaused;
+                pauseOrResumeAnimation("#example-plane-0");
+                changeSphereColor();
+            });
+
+            examplePlane0.addEventListener("model-loaded", () => {
+                let animationMixer = examplePlane0.components["animation-mixer"];
+            });
+
+            audio.addEventListener("ended", function () {
+                isPaused = false;
+                pauseOrResumeAnimation("#example-plane-0");
+                changeSphereColor();
+                examplePlane0.setAttribute("visible", true); // Hace que el modelo 3D aparezca
+            });
+
+            sphere.addEventListener("mousedown", function (event) {
+                event.stopPropagation();
+                if (sphere.contains(event.target)) {
+                    isMouseDown = true;
+                }
+            });
+
+            sphere.addEventListener("mouseup", function (event) {
+                event.stopPropagation();
+                if (sphere.contains(event.target)) {
+                    isMouseDown = false;
+                }
+            });
+
+            sphere.addEventListener("click", function (event) {
+                event.stopPropagation();
+                if (sphere.contains(event.target)) {
+                    if (!audio.paused) {
+                        audio.pause();
+                        examplePlane0.setAttribute("visible", true); // Hace que el modelo 3D aparezca
+                    } else {
+                        audio.play();
+                        examplePlane0.setAttribute("visible", false); // Hace que el modelo 3D desaparezca
+                    }
+                }
+            });
+
+            // Variables y constantes específicas de video
+            const examplePlane1 = document.querySelector("#example-plane-1");
+
+            const cokeVideoButton = document.querySelector("#coke-Video-button");
+            const cokeVideo = document.querySelector("#coke-video-mp4");
+
+            // Controladores de eventos específicos de video
+            cokeVideoButton.addEventListener("click", () => {
+                examplePlane1.setAttribute("visible", false);
+            });
+
+            cokeVideo.addEventListener("ended", () => {
+                examplePlane1.setAttribute("visible", true);
+            });
+
+            // Funciones específicas de avatar
+            const avatar = document.querySelector("#avatar");
+            avatar.addEventListener("model-loaded", () => {
+                const model = avatar.getObject3D("mesh");
+                if (model) {
+                    avatar.components["animation-mixer"].play();
+                }
+            });
+
+            // Funciones específicas de portafolio
+            const showInfo = () => {
+                let y = 0;
+                const webButton = document.querySelector("#web-button");
+
+                const text = document.querySelector("#text");
+
+                setTimeout(() => {
+                    webButton.setAttribute("visible", true);
+                }, 300);
+
+                let currentTab = "";
+                webButton.addEventListener("click", function (evt) {
+                    window.location.href = "https://pideenlinea.elcorral.com/";
+                });
+            };
+
+            const showPortfolio = (done) => {
+                const portfolio = document.querySelector("#portfolio-panel");
+                const avatar = document.querySelector("#avatar");
+
+                const portfolioLeftButton = document.querySelector("#portfolio-left-button");
+                const portfolioRightButton = document.querySelector("#portfolio-right-button");
+                const burgersPreviewButton = document.querySelector("#burgers-preview-button");
+
+                let y = 0;
+                let currentItem = 0;
+
+                portfolio.setAttribute("visible", true);
+
+                const showPortfolioItem = (item) => {
+                    for (let i = 0; i <= 2; i++) {
+                        document.querySelector("#portfolio-item" + i).setAttribute("visible", i === item);
+                    }
+                };
+
+                const id = setInterval(() => {
+                    y += 0.008;
+                    if (y >= 0.6) {
+                        clearInterval(id);
+                        avatar.setAttribute("visible", false);
+                        portfolioLeftButton.setAttribute("visible", true);
+                        portfolioRightButton.setAttribute("visible", true);
+                        portfolioLeftButton.addEventListener("click", () => {
+                            currentItem = (currentItem + 1) % 3;
+                            showPortfolioItem(currentItem);
+                        });
+                        portfolioRightButton.addEventListener("click", () => {
+                            currentItem = (currentItem - 1 + 3) % 3;
+                            showPortfolioItem(currentItem);
+                        });
+
+                        setTimeout(() => {
+                            done();
+                        }, 500);
+                    }
+                    portfolio.setAttribute("position", "0 " + y + " -0.01");
+                }, 10);
+            };
+
+            const showAvatar = (onDone) => {
+                const avatar = document.querySelector("#avatar");
+                let z = -0.3;
+                const id = setInterval(() => {
+                    z += 0.008;
+                    if (z >= 0.3) {
+                        clearInterval(id);
+                        avatar.components["animation-mixer"].play();
+                        onDone();
+                    }
+                    avatar.setAttribute("position", "0 -0.25 " + z);
+                }, 10);
+            };
+
+            // Controladores de eventos específicos de avatar y portafolio
+            AFRAME.registerComponent("mytarget2", {
+                init: function () {
+                    this.el.addEventListener("targetFound", (event) => {
+                        console.log("target 2 found");
+                        showAvatar(() => {
+                            setTimeout(() => {
+                                showPortfolio(() => {
+                                    setTimeout(() => {
+                                        showInfo();
+                                    }, 300);
+                                });
+                            }, 300);
+                        });
+                    });
+                    this.el.addEventListener("targetLost", (event) => {
+                        console.log("target 2 found");
+                    });
+
+                    AFRAME.registerComponent("model-loaded", {
+                        schema: {
+                            playAnimation: { type: "boolean", default: false },
+                        },
+                        init: function () {
+                            this.el.addEventListener("model-loaded", () => {
+                                if (this.data.playAnimation) {
+                                    const mixer = this.el.components["animation-mixer"];
+                                    if (mixer) {
+                                        mixer.play();
+                                    }
+                                }
+                            });
+                        },
+                    });
+                },
+            });
+
+            // Controladores de eventos específicos de video de Coca-Cola
+            AFRAME.registerComponent("mytarget1", {
+                init: function () {
+                    this.el.addEventListener("targetFound", (event) => {
+                        console.log("target 1 found");
+                        document.querySelector("#portfolio1-video").setAttribute("visible", true);
+                        const cokeVideoButton = document.querySelector("#coke-Video-button");
+                        cokeVideoButton.addEventListener("click", () => {
+                            cokeVideoButton.setAttribute("visible", false);
+                            document.querySelector("#coke-video-link").setAttribute("src", "#coke-video-mp4");
+                            document.querySelector("#coke-video-mp4").play();
+                        });
+                    });
+                    this.el.addEventListener("targetLost", (event) => {
+                        console.log("target 1 lost");
+                        document.querySelector("#coke-video-mp4").pause();
+                        document.querySelector("#portfolio1-video").setAttribute("visible", false);
+                        document.querySelector("#coke-video-mp4").currentTime = 0;
+                    });
+                },
+            });
+        });
+    </script>
+
+
+
+    <style>
+        body {
+            background-image: url("https://generacionessabiascopy.github.io/interactivos/fondo.jpg");
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+
+
+        }
+
+        @media (orientation: portrait) {
+            body {
+                background-size: auto 100%;
+                /* Ajusta la imagen al alto de la pantalla, manteniendo su proporción original */
+                background-position: center;
+                /* Centra la imagen en la pantalla */
+            }
+        }
+
+        @media (orientation: landscape) {
+            body {
+                background-size: 100% auto;
+                /* Ajusta la imagen al ancho de la pantalla, manteniendo su proporción original */
+                background-position: center;
+                /* Centra la imagen en la pantalla */
+            }
+        }
+
+        .no-background {
+            background-image: none;
+            /* Quita la imagen de fondo */
+        }
+
+        .example-container {
+            overflow: hidden;
+            position: absolute;
+            width: 100%;
+            height: 100%;
+        }
+
+        #example-scanning-overlay {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            background: transparent;
+            z-index: 2;
+        }
+
+        @media (min-aspect-ratio: 1/1) {
+            #example-scanning-overlay .inner {
+                width: 50vh;
+                height: 50vh;
+            }
+        }
+
+        @media (max-aspect-ratio: 1/1) {
+            #example-scanning-overlay .inner {
+                width: 80vw;
+                height: 80vw;
+            }
+        }
+
+        #example-scanning-overlay .inner {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+
+            background:
+                linear-gradient(to right, white 10px, transparent 10px) 0 0,
+                linear-gradient(to right, white 10px, transparent 10px) 0 100%,
+                linear-gradient(to left, white 10px, transparent 10px) 100% 0,
+                linear-gradient(to left, white 10px, transparent 10px) 100% 100%,
+                linear-gradient(to bottom, white 10px, transparent 10px) 0 0,
+                linear-gradient(to bottom, white 10px, transparent 10px) 100% 0,
+                linear-gradient(to top, white 10px, transparent 10px) 0 100%,
+                linear-gradient(to top, white 10px, transparent 10px) 100% 100%;
+            background-repeat: no-repeat;
+            background-size: 40px 40px;
+        }
+
+        #example-scanning-overlay.hidden {
+            display: none;
+        }
+
+        #example-scanning-overlay img {
+            opacity: 0.6;
+            width: 90%;
+            align-self: center;
+        }
+
+        #example-scanning-overlay .inner .scanline {
+            position: absolute;
+            width: 100%;
+            height: 10px;
+            background: white;
+            animation: move 2s linear infinite;
+        }
+
+        @keyframes move {
+
+            0%,
+            100% {
+                top: 0%
+            }
+
+            50% {
+                top: calc(100% - 10px)
+            }
+        }
+
+        #start-button-container {
+            position: absolute;
+            z-index: 1000;
+
+        }
+
+        #example-start-button {
+            width: 208px;
+            height: 152px;
+            border: none;
+            padding: 0;
+            border-radius: 0;
+            box-shadow: 0 0 0px rgba(0, 0, 0, 0.0);
+            transition: transform 0.3s;
+            background: transparent;
+            /* Hace que el fondo del botón sea transparente */
+        }
+
+
+        #example-start-button:hover {
+            transform: scale(1.1);
+            /* Aumenta el tamaño del botón en un 10% al pasar el ratón por encima */
+        }
+
+        #example-start-button:active {
+            transform: scale(1.2);
+            /* Aumenta el tamaño del botón en un 20% al hacer clic */
+        }
+    </style>
+
+</head>
+
+<body>
+
+    <div id="start-button-container">
+        <button id="example-start-button" data-action="start">
+            <img src="https://generacionessabiascopy.github.io/interactivos/boton.png" alt="Botón de inicio">
+        </button>
+    </div>
+
+
+    <div class="example-container">
+        <div id="example-scanning-overlay" class="hidden">
+            <div class="inner">
+                <img src="https://generacionessabiascopy.github.io/interactivos/card.png" />
+                <div class="scanline"></div>
+            </div>
+        </div>
+
+
+        <a-scene
+            mindar-image="imageTargetSrc:https://generacionessabiascopy.github.io/interactivos/targets.mind; autoStart: false; showStats: false; uiScanning: #example-scanning-overlay;"
+            embedded color-space="sRGB" renderer="colorManagement: true, physicallyCorrectLights"
+            vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false">
+            <a-assets>
+                <img crossorigin="anonymous" id="combos"
+                    src="https://generacionessabiascopy.github.io/interactivos/combos.png" />
+                <img crossorigin="anonymous" id="icon-web"
+                    src="https://generacionessabiascopy.github.io/interactivos/web.png" />
+                <img crossorigin="anonymous" id="icon-left"
+                    src="https://generacionessabiascopy.github.io/interactivos/left.png" />
+                <img crossorigin="anonymous" id="icon-right"
+                    src="https://generacionessabiascopy.github.io/interactivos/right.png" />
+                <img crossorigin="anonymous" id="burgers-preview"
+                    src="https://generacionessabiascopy.github.io/interactivos/2burgers.png" />
+                <img crossorigin="anonymous" id="todoterreno-preview"
+                    src="https://generacionessabiascopy.github.io/interactivos/todoterreno.png" />
+                <img crossorigin="anonymous" id="portuguesa-preview"
+                    src="https://generacionessabiascopy.github.io/interactivos/portuguesa.png" />
+                <a-asset-item id="ego-fotos"
+                    src="https://generacionessabiascopy.github.io/interactivos/corrarCapBIG.gltf"></a-asset-item>
+                <img crossorigin="anonymous" id="coke-Video"
+                    src="https://generacionessabiascopy.github.io/interactivos/corralVideo.png" />
+                <video crossorigin="anonymous" id="coke-video-mp4" autoplay="false" loop="false"
+                    src="https://generacionessabiascopy.github.io/interactivos/CorrarVideo.mp4"></video>
+                <audio crossorigin="anonymous" id="mySound"
+                    src="https://generacionessabiascopy.github.io/interactivos/corralAudio.mp3" autoplay="false"></audio>
+                <a-asset-item id="ego-audio-video"
+                    src="https://generacionessabiascopy.github.io/interactivos/corrarCapBIG.gltf"></a-asset-item>
+            </a-assets>
+
+            <a-camera position="0 0 0" look-controls="enabled: false" cursor="fuse: false; rayOrigin: mouse;"
+                raycaster="far: 10000; objects: .clickable">
+            </a-camera>
+
+            <a-entity id="mytarget0" mindar-image-target="targetIndex: 0" visible-when-target-found>
+                <a-gltf-model id="example-plane-0" class="clickable" rotation="0 0 0 " position="0 -0.25 0"
+                    scale="0.25 0.25 0.25" src="#ego-audio-video" animation-mixer>
+                </a-gltf-model>
+                <a-sphere id="example-pause-sphere" class="clickable" radius="0.5" color="green" opacity="0.0"
+                    follow="mytarget0: #example-plane-0; distance: 0.8; angle: 0" position="0 0.2 0.1">
+                    <audio id="mySound" src="#mySound" autoplay="false"></audio>
+                </a-sphere>
+            </a-entity>
+
+            <a-entity id="mytarget1" mytarget1 mindar-image-target="targetIndex: 1" visible-when-target-found>
+                <a-entity id="portfolio1-video" position="0 0 -0.01">
+                    <a-entity id="portfolio1-item0">
+                        <a-entity id="coke-Video-button" class="clickable"
+                            geometry="primitive: plane; width: 1; height: 0.552"
+                            material="src: #coke-Video; alpha-test: 0.5" position="0 0 0.01"></a-entity>
+                        <a-plane id="coke-video-link" width="1" height="0.552"
+                            material="src: #coke-video-mp4; transparent: true" position="0 0 0"
+                            video-controls></a-plane>
+                    </a-entity>
+                </a-entity>
+                <a-gltf-model id="example-plane-1" class="clickable" rotation="0 0 0 " position="0 -0.25 0"
+                    scale="0.25 0.25 0.25" src="#ego-audio-video" animation-mixer>
+                </a-gltf-model>
+            </a-entity>
+
+            <a-entity id="mytarget2" mytarget2 mindar-image-target="targetIndex: 2;">
+                <a-plane src="#combos" position="0 0 0" height="0.552" width="1" rotation="0 0 0"></a-plane>
+
+                <a-entity visible=false id="portfolio-panel" position="0 0 -0.01">
+
+                    <a-entity id="portfolio-item0">
+
+                        <a-image id="burgers-preview-button" class="clickable" src="#burgers-preview" alpha-test="1"
+                            position="0 0 0" height="0.552" width="1">
+                        </a-image>
+                    </a-entity>
+                    <a-entity id="portfolio-item1" visible=false>
+                        <a-image class="clickable" src="#todoterreno-preview" alpha-test="0.5" position="0 0 0"
+                            height="0.552" width="1">
+                        </a-image>
+                    </a-entity>
+                    <a-entity id="portfolio-item2" visible=false>
+                        <a-image class="clickable" src="#portuguesa-preview" alpha-test="0.5" position="0 0 0"
+                            height="0.552" width="1">
+                        </a-image>
+                    </a-entity>
+
+                    <a-image visible=false id="portfolio-left-button" class="clickable" src="#icon-left"
+                        position="-0.57 0 0" height="0.15" width="0.15"></a-image>
+                    <a-image visible=false id="portfolio-right-button" class="clickable" src="#icon-right"
+                        position="0.57 0 0" height="0.15" width="0.15"></a-image>
+                </a-entity>
+
+                <a-image visible=false id="web-button" class="clickable" src="#icon-web" alpha-test="0.5"
+                    position="-0.14 -0.5 0" height="0.4" width="0.4"
+                    animation="property: scale; to: 1.2 1.2 1.2; dur: 1000; easing: easeInOutQuad; loop: true; dir: alternate"></a-image>
+
+                <a-gltf-model id="avatar" rotation="0 0 0" position="0 -0.25 0" scale="0.25 0.25 0.25" src="#ego-fotos"
+                    animation-mixer="clip: *; ">
+                </a-gltf-model>
+            </a-entity>
+
+        </a-scene>
+    </div>
+</body>
+</html>
