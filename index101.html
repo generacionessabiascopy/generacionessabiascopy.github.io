@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- =====================================================
+       DEPENDENCIAS — versiones fijas, orden crítico
+       1. A-Frame primero
+       2. MindAR segundo (extiende A-Frame)
+       3. aframe-extras tercero (extiende A-Frame)
+  ====================================================== -->
+  <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/aframe-extras@6.1.1/dist/aframe-extras.min.js"></script>
+
+  <style>
+    /* =====================================================
+       RESET BASE
+    ====================================================== */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    /* =====================================================
+       FONDO DE PANTALLA DE INICIO
+       Responsive por orientación
+    ====================================================== */
+    body {
+      background-image: url("https://generacionessabiascopy.github.io/interactivos/fondo.jpg");
+      background-repeat: no-repeat;
+      background-attachment: fixed;
+    }
+
+    @media (orientation: portrait) {
+      body {
+        background-size: auto 100%;
+        background-position: center;
+      }
+    }
+
+    @media (orientation: landscape) {
+      body {
+        background-size: 100% auto;
+        background-position: center;
+      }
+    }
+
+    /* Clase que elimina el fondo al iniciar AR */
+    body.ar-active {
+      background-image: none;
+    }
+
+    /* =====================================================
+       CONTENEDOR PRINCIPAL AR
+    ====================================================== */
+    #ar-container {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      top: 0;
+      left: 0;
+      overflow: hidden;
+    }
+
+    /* =====================================================
+       BOTÓN DE INICIO
+    ====================================================== */
+    #start-button-container {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 1000;
+    }
+
+    #example-start-button {
+      width: 208px;
+      height: 152px;
+      border: none;
+      padding: 0;
+      border-radius: 0;
+      box-shadow: none;
+      background: transparent;
+      cursor: pointer;
+      transition: transform 0.3s;
+      display: block;
+    }
+
+    #example-start-button img {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    #example-start-button:hover {
+      transform: translate(-50%, -50%) scale(1.1);
+    }
+
+    #example-start-button:active {
+      transform: translate(-50%, -50%) scale(1.2);
+    }
+
+    /* Ocultar botón cuando AR está activo */
+    body.ar-active #start-button-container {
+      display: none;
+    }
+
+    /* =====================================================
+       OVERLAY DE ESCANEO
+    ====================================================== */
+    #example-scanning-overlay {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 0;
+      bottom: 0;
+      background: transparent;
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    #example-scanning-overlay.hidden {
+      display: none;
+    }
+
+    @media (min-aspect-ratio: 1/1) {
+      #example-scanning-overlay .inner {
+        width: 50vh;
+        height: 50vh;
+      }
+    }
+
+    @media (max-aspect-ratio: 1/1) {
+      #example-scanning-overlay .inner {
+        width: 80vw;
+        height: 80vw;
+      }
+    }
+
+    #example-scanning-overlay .inner {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      background:
+        linear-gradient(to right, white 10px, transparent 10px) 0 0,
+        linear-gradient(to right, white 10px, transparent 10px) 0 100%,
+        linear-gradient(to left, white 10px, transparent 10px) 100% 0,
+        linear-gradient(to left, white 10px, transparent 10px) 100% 100%,
+        linear-gradient(to bottom, white 10px, transparent 10px) 0 0,
+        linear-gradient(to bottom, white 10px, transparent 10px) 100% 0,
+        linear-gradient(to top, white 10px, transparent 10px) 0 100%,
+        linear-gradient(to top, white 10px, transparent 10px) 100% 100%;
+      background-repeat: no-repeat;
+      background-size: 40px 40px;
+    }
+
+    #example-scanning-overlay img {
+      opacity: 0.6;
+      width: 90%;
+      align-self: center;
+    }
+
+    #example-scanning-overlay .scanline {
+      position: absolute;
+      width: 100%;
+      height: 10px;
+      background: white;
+      animation: scanMove 2s linear infinite;
+    }
+
+    @keyframes scanMove {
+      0%, 100% { top: 0%; }
+      50%       { top: calc(100% - 10px); }
+    }
+
+  </style>
+</head>
+
+<body>
+
+  <!-- =====================================================
+       BOTÓN DE INICIO — centrado, se oculta al iniciar AR
+  ====================================================== -->
+  <div id="start-button-container">
+    <button id="example-start-button" data-action="start">
+      <img
+        src="https://generacionessabiascopy.github.io/interactivos/boton.png"
+        alt="Iniciar experiencia de Realidad Aumentada"
+      />
+    </button>
+  </div>
+
+  <!-- =====================================================
+       CONTENEDOR AR
+  ====================================================== -->
+  <div id="ar-container">
+
+    <!-- OVERLAY DE ESCANEO — visible al iniciar AR -->
+    <div id="example-scanning-overlay" class="hidden">
+      <div class="inner">
+        <img src="https://generacionessabiascopy.github.io/interactivos/card.png"
+             alt="Apunta al marcador" />
+        <div class="scanline"></div>
+      </div>
+    </div>
+
+    <!-- =====================================================
+         ESCENA A-FRAME / MINDAR
+         Configuración base — targets se agregan en iteración 2
+    ====================================================== -->
+    <a-scene
+      mindar-image="
+        imageTargetSrc: https://generacionessabiascopy.github.io/interactivos/targets.mind;
+        autoStart: false;
+        showStats: false;
+        uiScanning: #example-scanning-overlay;
+      "
+      embedded
+      color-space="sRGB"
+      renderer="colorManagement: true; physicallyCorrectLights: true"
+      vr-mode-ui="enabled: false"
+      device-orientation-permission-ui="enabled: false"
+    >
+
+      <!-- ASSETS — precarga de todos los recursos -->
+      <a-assets>
+        <!-- Imágenes UI -->
+        <img crossorigin="anonymous" id="icon-web"
+          src="https://generacionessabiascopy.github.io/interactivos/web.png" />
+        <img crossorigin="anonymous" id="icon-left"
+          src="https://generacionessabiascopy.github.io/interactivos/left.png" />
+        <img crossorigin="anonymous" id="icon-right"
+          src="https://generacionessabiascopy.github.io/interactivos/right.png" />
+
+        <!-- Imágenes de contenido -->
+        <img crossorigin="anonymous" id="combos"
+          src="https://generacionessabiascopy.github.io/interactivos/combos.png" />
+        <img crossorigin="anonymous" id="burgers-preview"
+          src="https://generacionessabiascopy.github.io/interactivos/2burgers.png" />
+        <img crossorigin="anonymous" id="todoterreno-preview"
+          src="https://generacionessabiascopy.github.io/interactivos/todoterreno.png" />
+        <img crossorigin="anonymous" id="portuguesa-preview"
+          src="https://generacionessabiascopy.github.io/interactivos/portuguesa.png" />
+        <img crossorigin="anonymous" id="coke-video-thumb"
+          src="https://generacionessabiascopy.github.io/interactivos/corralVideo.png" />
+
+        <!-- Video — playsinline y webkit-playsinline para iOS -->
+        <video
+          crossorigin="anonymous"
+          id="coke-video-mp4"
+          src="https://generacionessabiascopy.github.io/interactivos/CorrarVideo.mp4"
+          loop="false"
+          playsinline
+          webkit-playsinline
+          preload="auto"
+        ></video>
+
+        <!-- Audio -->
+        <audio
+          crossorigin="anonymous"
+          id="mySound"
+          src="https://generacionessabiascopy.github.io/interactivos/corralAudio.mp3"
+          preload="auto"
+        ></audio>
+
+        <!-- Modelo 3D — una sola declaración, reutilizada en los 3 targets -->
+        <a-asset-item
+          id="modelo-principal"
+          src="https://generacionessabiascopy.github.io/interactivos/corrarCapBIG.gltf"
+        ></a-asset-item>
+      </a-assets>
+
+      <!-- CÁMARA con raycaster para clicks en objetos .clickable -->
+      <a-camera
+        position="0 0 0"
+        look-controls="enabled: false"
+        cursor="fuse: false; rayOrigin: mouse"
+        raycaster="far: 10000; objects: .clickable"
+      ></a-camera>
+
+      <!--
+        TARGETS: se agregan en iteración 2 (target 0), 3 (target 1) y 4 (target 2)
+      -->
+
+    </a-scene>
+
+  </div><!-- /ar-container -->
+
+
+  <!-- =====================================================
+       JAVASCRIPT — lógica de inicio
+  ====================================================== -->
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+
+      const sceneEl       = document.querySelector("a-scene");
+      const startBtn      = document.querySelector("#example-start-button");
+      const scanOverlay   = document.querySelector("#example-scanning-overlay");
+
+      let arSystem  = null;
+      let isStarted = false;
+
+      // Obtener referencia al sistema MindAR cuando la escena carga
+      sceneEl.addEventListener("loaded", function () {
+        arSystem = sceneEl.systems["mindar-image-system"];
+      });
+
+      // Inicio manual del AR
+      startBtn.addEventListener("click", function () {
+        if (isStarted || !arSystem) return;
+        isStarted = true;
+
+        arSystem.start();
+
+        // Activar clase ar-active: quita fondo, oculta botón
+        document.body.classList.add("ar-active");
+
+        // Mostrar overlay de escaneo
+        scanOverlay.classList.remove("hidden");
+      });
+
+      // Cuando AR está listo
+      sceneEl.addEventListener("arReady", function () {
+        console.log("AR listo");
+      });
+
+      // Si AR falla (permisos de cámara denegados, etc.)
+      sceneEl.addEventListener("arError", function (event) {
+        console.error("AR error:", event.detail);
+        // Restaurar estado para que el usuario pueda reintentar
+        isStarted = false;
+        document.body.classList.remove("ar-active");
+        scanOverlay.classList.add("hidden");
+        alert("No se pudo acceder a la cámara. Verifica los permisos e intenta de nuevo.");
+      });
+
+    });
+  </script>
+
+</body>
+</html>
