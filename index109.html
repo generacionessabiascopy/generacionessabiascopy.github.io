@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- =====================================================
+       DEPENDENCIAS — versiones fijas, orden crítico
+       1. A-Frame primero
+       2. MindAR segundo (extiende A-Frame)
+       3. aframe-extras tercero (extiende A-Frame)
+  ====================================================== -->
+  <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/aframe-extras@6.1.1/dist/aframe-extras.min.js"></script>
+
+  <style>
+    /* =====================================================
+       RESET BASE
+    ====================================================== */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #000;
+    }
+
+    /* =====================================================
+       CONTENEDOR PRINCIPAL AR
+    ====================================================== */
+    #ar-container {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      top: 0;
+      left: 0;
+      overflow: hidden;
+    }
+
+    /* =====================================================
+       OVERLAY DE TOQUE — pantalla completa
+       Desaparece al tocar, cámara ya visible detrás
+    ====================================================== */
+    #touch-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.35);
+      cursor: pointer;
+      /* Transición de salida suave */
+      transition: opacity 0.6s ease;
+    }
+
+    #touch-overlay.oculto {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    /* Perspectiva 3D para el contenedor del texto */
+    #touch-overlay .texto-3d-wrapper {
+      perspective: 600px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Texto CSS 3D — etéreo y luminoso */
+    #touch-overlay .texto-3d {
+      font-family: 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif;
+      font-size: clamp(2.8rem, 8vw, 5rem);
+      font-weight: 400;
+      font-style: italic;
+      color: #ffffff;
+      letter-spacing: 0.08em;
+      text-align: center;
+      line-height: 1.3;
+
+      /* Rotación 3D sutil — flota inclinado */
+      transform: rotateX(12deg) rotateY(-4deg);
+      transform-style: preserve-3d;
+
+      /* Extrusión volumétrica con text-shadow en capas */
+      text-shadow:
+        0 1px 0 rgba(255,255,255,0.6),
+        0 2px 0 rgba(200,200,255,0.4),
+        0 3px 0 rgba(180,180,255,0.3),
+        0 4px 0 rgba(160,160,255,0.2),
+        0 5px 0 rgba(140,140,255,0.15),
+        0 6px 0 rgba(120,120,255,0.1),
+        0 8px 20px rgba(100,120,255,0.5),
+        0 15px 40px rgba(80,100,255,0.3),
+        0 25px 60px rgba(60,80,255,0.2);
+
+      /* Animación de balanceo flotante */
+      animation: flotar 4s ease-in-out infinite;
+    }
+
+    @keyframes flotar {
+      0%   { transform: rotateX(12deg) rotateY(-4deg) translateY(0px); }
+      50%  { transform: rotateX(8deg)  rotateY(4deg)  translateY(-12px); }
+      100% { transform: rotateX(12deg) rotateY(-4deg) translateY(0px); }
+    }
+
+    /* Puntos suspensivos con pulso independiente */
+    #touch-overlay .puntos {
+      display: inline-block;
+      animation: pulsoPuntos 1.5s ease-in-out infinite;
+    }
+
+    @keyframes pulsoPuntos {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.3; }
+    }
+
+    /* =====================================================
+       OVERLAY DE ESCANEO
+    ====================================================== */
+    #example-scanning-overlay {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 0;
+      bottom: 0;
+      background: transparent;
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    #example-scanning-overlay.hidden {
+      display: none;
+    }
+
+    @media (min-aspect-ratio: 1/1) {
+      #example-scanning-overlay .inner {
+        width: 50vh;
+        height: 50vh;
+      }
+    }
+
+    @media (max-aspect-ratio: 1/1) {
+      #example-scanning-overlay .inner {
+        width: 80vw;
+        height: 80vw;
+      }
+    }
+
+    #example-scanning-overlay .inner {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      background:
+        linear-gradient(to right, white 10px, transparent 10px) 0 0,
+        linear-gradient(to right, white 10px, transparent 10px) 0 100%,
+        linear-gradient(to left, white 10px, transparent 10px) 100% 0,
+        linear-gradient(to left, white 10px, transparent 10px) 100% 100%,
+        linear-gradient(to bottom, white 10px, transparent 10px) 0 0,
+        linear-gradient(to bottom, white 10px, transparent 10px) 100% 0,
+        linear-gradient(to top, white 10px, transparent 10px) 0 100%,
+        linear-gradient(to top, white 10px, transparent 10px) 100% 100%;
+      background-repeat: no-repeat;
+      background-size: 40px 40px;
+    }
+
+    #example-scanning-overlay img {
+      opacity: 0.6;
+      width: 90%;
+      align-self: center;
+    }
+
+    #example-scanning-overlay .scanline {
+      position: absolute;
+      width: 100%;
+      height: 10px;
+      background: white;
+      animation: scanMove 2s linear infinite;
+    }
+
+    @keyframes scanMove {
+      0%, 100% { top: 0%; }
+      50%       { top: calc(100% - 10px); }
+    }
+
+  </style>
+</head>
+
+<body>
+
+  <!-- OVERLAY DE TOQUE — pantalla completa, texto CSS 3D -->
+  <div id="touch-overlay">
+    <div class="texto-3d-wrapper">
+      <div class="texto-3d">
+        Toca aquí<span class="puntos">...</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONTENEDOR AR -->
+  <div id="ar-container">
+
+    <!-- OVERLAY DE ESCANEO -->
+    <div id="example-scanning-overlay" class="hidden">
+      <div class="inner">
+        <img src="https://generacionessabiascopy.github.io/interactivos/card.png"
+             alt="Apunta al marcador" />
+        <div class="scanline"></div>
+      </div>
+    </div>
+
+    <!-- =====================================================
+         ESCENA A-FRAME / MINDAR
+    ====================================================== -->
+    <a-scene
+      mindar-image="
+        imageTargetSrc: https://generacionessabiascopy.github.io/interactivos/targets7.mind;
+        autoStart: true;
+        showStats: false;
+        uiScanning: #example-scanning-overlay;
+        maxTrack: 3
+      "
+      embedded
+      color-space="sRGB"
+      renderer="colorManagement: true; physicallyCorrectLights: true"
+      vr-mode-ui="enabled: false"
+      device-orientation-permission-ui="enabled: false"
+    >
+
+      <!-- =====================================================
+           ASSETS — precarga completa, sin duplicados
+      ====================================================== -->
+      <a-assets>
+        <!-- Imágenes UI -->
+        <img crossorigin="anonymous" id="icon-web"
+          src="https://generacionessabiascopy.github.io/interactivos/web.png" />
+        <img crossorigin="anonymous" id="icon-left"
+          src="https://generacionessabiascopy.github.io/interactivos/left.png" />
+        <img crossorigin="anonymous" id="icon-right"
+          src="https://generacionessabiascopy.github.io/interactivos/right.png" />
+
+        <!-- Imágenes de contenido -->
+        <img crossorigin="anonymous" id="combos"
+          src="https://generacionessabiascopy.github.io/interactivos/combos.png" />
+        <img crossorigin="anonymous" id="burgers-preview"
+          src="https://generacionessabiascopy.github.io/interactivos/2burgers.png" />
+        <img crossorigin="anonymous" id="todoterreno-preview"
+          src="https://generacionessabiascopy.github.io/interactivos/todoterreno.png" />
+        <img crossorigin="anonymous" id="portuguesa-preview"
+          src="https://generacionessabiascopy.github.io/interactivos/portuguesa.png" />
+        <img crossorigin="anonymous" id="coke-video-thumb"
+          src="https://generacionessabiascopy.github.io/interactivos/corralVideo.png" />
+
+        <!-- Video — playsinline para iOS -->
+        <video
+          crossorigin="anonymous"
+          id="coke-video-mp4"
+          src="https://generacionessabiascopy.github.io/interactivos/CorrarVideo.mp4"
+          playsinline
+          webkit-playsinline
+          preload="auto"
+        ></video>
+
+        <!-- Audio — sin autoplay, sin ID duplicado -->
+        <audio
+          crossorigin="anonymous"
+          id="mySound"
+          src="https://generacionessabiascopy.github.io/interactivos/corralAudio.mp3"
+          preload="auto"
+        ></audio>
+
+        <!-- Modelo 3D — UNA sola declaración para los 3 targets -->
+        <a-asset-item
+          id="modelo-principal"
+          src="https://generacionessabiascopy.github.io/interactivos/corrarCapBIG.gltf"
+        ></a-asset-item>
+      </a-assets>
+
+      <!-- CÁMARA con raycaster -->
+      <a-camera
+        position="0 0 0"
+        look-controls="enabled: false"
+        cursor="fuse: false; rayOrigin: mouse"
+        raycaster="far: 10000; objects: .clickable"
+      ></a-camera>
+
+      <!-- =====================================================
+           TARGET 0 — Audio + Modelo 3D
+           Puntos del inventario: 9 al 19
+      ====================================================== -->
+      <a-entity id="mytarget0" mindar-image-target="targetIndex: 0">
+
+        <!--
+          Modelo 3D principal.
+          - Inicia INVISIBLE: el audio arranca primero, el modelo aparece al terminar
+          - animation-mixer reproduce todos los clips del GLTF
+        -->
+        <a-gltf-model
+          id="modelo-t0"
+          class="clickable"
+          src="#modelo-principal"
+          position="0 -0.25 0"
+          scale="0.25 0.25 0.25"
+          rotation="0 0 0"
+          visible="false"
+          animation-mixer="clip: *; loop: repeat"
+        ></a-gltf-model>
+
+        <!--
+          Esfera de control — invisible pero clicable.
+          Cubre el área del modelo para capturar interacción.
+          opacity="0.0" la hace invisible visualmente.
+          El color cambia internamente para rastrear estado
+          (verde = reproduciendo, rojo = pausado).
+        -->
+        <a-sphere
+          id="esfera-t0"
+          class="clickable"
+          radius="0.5"
+          color="green"
+          opacity="0.0"
+          position="0 0.2 0.1"
+        ></a-sphere>
+
+      </a-entity>
+
+      <!-- =====================================================
+           TARGET 1 — Video comercial
+           Puntos del inventario: 20 al 27
+      ====================================================== -->
+      <a-entity id="mytarget1" mindar-image-target="targetIndex: 1">
+
+        <!--
+          Modelo 3D — mismo asset que target 0.
+          Visible al detectar el target, se oculta al reproducir video.
+          Reaparece cuando el video termina.
+        -->
+        <a-gltf-model
+          id="modelo-t1"
+          class="clickable"
+          src="#modelo-principal"
+          position="0 -0.25 0"
+          scale="0.25 0.25 0.25"
+          rotation="0 0 0"
+          visible="true"
+          animation-mixer="clip: *; loop: repeat"
+        ></a-gltf-model>
+
+        <!--
+          Contenedor del video — inicia oculto.
+          Se hace visible cuando el usuario toca el thumbnail.
+        -->
+        <a-entity id="contenedor-video-t1" visible="false" position="0 0 0">
+
+          <!-- Plano del video -->
+          <a-plane
+            id="plano-video-t1"
+            width="1"
+            height="0.552"
+            position="0 0 0"
+            material="src: #coke-video-mp4; transparent: true"
+          ></a-plane>
+
+        </a-entity>
+
+        <!--
+          Thumbnail clicable — imagen promocional.
+          Al tocarlo inicia el video.
+          Se oculta cuando el video comienza.
+        -->
+        <a-entity
+          id="thumbnail-t1"
+          class="clickable"
+          geometry="primitive: plane; width: 1; height: 0.552"
+          material="src: #coke-video-thumb; alpha-test: 0.5"
+          position="0 0 0.01"
+        ></a-entity>
+
+      </a-entity>
+
+      <!-- =====================================================
+           TARGET 2 — Avatar + Portfolio + Botón web
+           Puntos del inventario: 28 al 40
+      ====================================================== -->
+      <a-entity id="mytarget2" mindar-image-target="targetIndex: 2">
+
+        <!-- Imagen de fondo estática -->
+        <a-plane
+          src="#combos"
+          position="0 0 0"
+          height="0.552"
+          width="1"
+        ></a-plane>
+
+        <!-- Avatar — inicia oculto, entra desde Z negativo -->
+        <a-gltf-model
+          id="avatar-t2"
+          src="#modelo-principal"
+          position="0 -0.25 -0.3"
+          scale="0.25 0.25 0.25"
+          rotation="0 0 0"
+          visible="false"
+          animation-mixer="clip: *; loop: repeat"
+        ></a-gltf-model>
+
+        <!-- Portfolio panel — inicia oculto y abajo -->
+        <a-entity id="portfolio-panel" visible="false" position="0 -0.6 0.01">
+
+          <a-entity id="portfolio-item0" visible="true">
+            <a-image class="clickable" src="#burgers-preview"
+              alpha-test="0.5" position="0 0 0" height="0.552" width="1">
+            </a-image>
+          </a-entity>
+
+          <a-entity id="portfolio-item1" visible="false">
+            <a-image class="clickable" src="#todoterreno-preview"
+              alpha-test="0.5" position="0 0 0" height="0.552" width="1">
+            </a-image>
+          </a-entity>
+
+          <a-entity id="portfolio-item2" visible="false">
+            <a-image class="clickable" src="#portuguesa-preview"
+              alpha-test="0.5" position="0 0 0" height="0.552" width="1">
+            </a-image>
+          </a-entity>
+
+          <a-image id="btn-izquierda" class="clickable" src="#icon-left"
+            position="-0.57 0 0" height="0.15" width="0.15" visible="false">
+          </a-image>
+
+          <a-image id="btn-derecha" class="clickable" src="#icon-right"
+            position="0.57 0 0" height="0.15" width="0.15" visible="false">
+          </a-image>
+
+        </a-entity>
+
+        <!-- Botón web con animación de latido -->
+        <a-image
+          id="btn-web"
+          class="clickable"
+          src="#icon-web"
+          alpha-test="0.5"
+          position="-0.14 -0.5 0"
+          height="0.4"
+          width="0.4"
+          visible="false"
+          animation="property: scale; from: 1 1 1; to: 1.2 1.2 1.2; dur: 1000; easing: easeInOutQuad; loop: true; dir: alternate"
+        ></a-image>
+
+      </a-entity>
+
+    </a-scene>
+
+  </div><!-- /ar-container -->
+
+
+  <!-- =====================================================
+       JAVASCRIPT
+  ====================================================== -->
+  <script>
+
+    // =====================================================
+    // COMPONENTE: target0-controller
+    // Registrado ANTES de DOMContentLoaded — requisito A-Frame
+    // Gestiona toda la lógica del Target 0
+    // =====================================================
+    AFRAME.registerComponent("target0-controller", {
+      init: function () {
+        const modelo   = document.querySelector("#modelo-t0");
+        const esfera   = document.querySelector("#esfera-t0");
+        const audio    = document.querySelector("#mySound");
+        const overlay  = document.querySelector("#example-scanning-overlay");
+
+        // --------------------------------------------------
+        // targetFound
+        // --------------------------------------------------
+        this.el.addEventListener("targetFound", function () {
+          console.log("Target 0 encontrado");
+
+          overlay.classList.add("hidden");
+
+          // Estado limpio en cada detección
+          modelo.setAttribute("visible", false);
+          esfera.setAttribute("color", "green");
+
+          // Iniciar audio desde el principio
+          audio.currentTime = 0;
+          audio.play().catch(function (err) {
+            console.warn("Audio bloqueado por el navegador:", err);
+            modelo.setAttribute("visible", true);
+            esfera.setAttribute("color", "red");
+          });
+        });
+
+        // --------------------------------------------------
+        // targetLost — reset completo
+        // --------------------------------------------------
+        this.el.addEventListener("targetLost", function () {
+          console.log("Target 0 perdido");
+
+          audio.pause();
+          modelo.setAttribute("visible", false);
+          esfera.setAttribute("color", "green");
+
+          overlay.classList.remove("hidden");
+        });
+
+        // --------------------------------------------------
+        // Audio terminó naturalmente
+        // --------------------------------------------------
+        audio.addEventListener("ended", function () {
+          esfera.setAttribute("color", "green");
+          modelo.setAttribute("visible", true);
+          const mixer = modelo.components["animation-mixer"];
+          if (mixer) mixer.play();
+        });
+
+        // --------------------------------------------------
+        // Guard model-loaded
+        // --------------------------------------------------
+        modelo.addEventListener("model-loaded", function () {
+          const mixer = modelo.components["animation-mixer"];
+          if (mixer) mixer.play();
+        });
+
+        // --------------------------------------------------
+        // Toggle — handler único para esfera y modelo
+        // --------------------------------------------------
+        function toggleReproduccion() {
+          if (!audio.paused) {
+            audio.pause();
+            esfera.setAttribute("color", "red");
+            modelo.setAttribute("visible", true);
+            const mixer = modelo.components["animation-mixer"];
+            if (mixer) mixer.pause();
+          } else {
+            audio.play().catch(function (err) {
+              console.warn("No se pudo reanudar audio:", err);
+            });
+            esfera.setAttribute("color", "green");
+            modelo.setAttribute("visible", false);
+            const mixer = modelo.components["animation-mixer"];
+            if (mixer) mixer.play();
+          }
+        }
+
+        esfera.addEventListener("click", function (evt) {
+          evt.stopPropagation();
+          toggleReproduccion();
+        });
+
+        modelo.addEventListener("click", function (evt) {
+          evt.stopPropagation();
+          toggleReproduccion();
+        });
+
+      }
+    });
+
+
+    // =====================================================
+    // COMPONENTE: target1-controller
+    // Gestiona toda la lógica del Target 1 — video comercial
+    // =====================================================
+    AFRAME.registerComponent("target1-controller", {
+      init: function () {
+        const modelo       = document.querySelector("#modelo-t1");
+        const thumbnail    = document.querySelector("#thumbnail-t1");
+        const contenedor   = document.querySelector("#contenedor-video-t1");
+        const video        = document.querySelector("#coke-video-mp4");
+        const overlay      = document.querySelector("#example-scanning-overlay");
+
+        // Flag para evitar acumulación de listeners entre detecciones
+        let videoListenerActivo = false;
+
+        // --------------------------------------------------
+        // targetFound
+        // --------------------------------------------------
+        this.el.addEventListener("targetFound", function () {
+          console.log("Target 1 encontrado");
+
+          overlay.classList.add("hidden");
+
+          // Estado inicial limpio en cada detección
+          modelo.setAttribute("visible", true);
+          thumbnail.setAttribute("visible", true);
+          contenedor.setAttribute("visible", false);
+
+          // Asignar listener al thumbnail UNA sola vez
+          if (!videoListenerActivo) {
+            videoListenerActivo = true;
+
+            thumbnail.addEventListener("click", function () {
+              // Ocultar thumbnail y modelo
+              thumbnail.setAttribute("visible", false);
+              modelo.setAttribute("visible", false);
+
+              // Mostrar contenedor de video y reproducir
+              contenedor.setAttribute("visible", true);
+              video.currentTime = 0;
+              video.play().catch(function (err) {
+                console.warn("Video bloqueado por el navegador:", err);
+                // Fallback: restaurar estado inicial
+                thumbnail.setAttribute("visible", true);
+                modelo.setAttribute("visible", true);
+                contenedor.setAttribute("visible", false);
+              });
+            });
+
+            // Cuando el video termina
+            video.addEventListener("ended", function () {
+              // Ocultar video, restaurar modelo
+              contenedor.setAttribute("visible", false);
+              modelo.setAttribute("visible", true);
+              thumbnail.setAttribute("visible", true);
+            });
+          }
+        });
+
+        // --------------------------------------------------
+        // targetLost
+        // --------------------------------------------------
+        this.el.addEventListener("targetLost", function () {
+          console.log("Target 1 perdido");
+
+          // Pausar y rebobinar video
+          video.pause();
+          video.currentTime = 0;
+
+          // Restaurar estado visual completo
+          contenedor.setAttribute("visible", false);
+          thumbnail.setAttribute("visible", true);
+          modelo.setAttribute("visible", true);
+
+          overlay.classList.remove("hidden");
+        });
+      }
+    });
+
+
+    // =====================================================
+    // COMPONENTE: target2-controller
+    // Avatar + Portfolio + Botón web
+    // Animaciones con requestAnimationFrame — sin setInterval
+    // =====================================================
+    AFRAME.registerComponent("target2-controller", {
+      init: function () {
+        const avatar        = document.querySelector("#avatar-t2");
+        const portfolio     = document.querySelector("#portfolio-panel");
+        const btnIzquierda  = document.querySelector("#btn-izquierda");
+        const btnDerecha    = document.querySelector("#btn-derecha");
+        const btnWeb        = document.querySelector("#btn-web");
+        const overlay       = document.querySelector("#example-scanning-overlay");
+
+        const items = [
+          document.querySelector("#portfolio-item0"),
+          document.querySelector("#portfolio-item1"),
+          document.querySelector("#portfolio-item2"),
+        ];
+
+        let currentItem  = 0;
+        let animando     = false;
+        let rafId        = null;
+
+        // --------------------------------------------------
+        // Utilidad: mostrar solo el item activo del carrusel
+        // --------------------------------------------------
+        function mostrarItem(index) {
+          items.forEach(function (item, i) {
+            item.setAttribute("visible", i === index);
+          });
+        }
+
+        // --------------------------------------------------
+        // Animación del avatar: Z de -0.3 a 0.3
+        // Usa requestAnimationFrame — sin setInterval
+        // --------------------------------------------------
+        function animarAvatar(onDone) {
+          const duracion = 750; // ms — equivalente al setInterval original
+          const inicio   = performance.now();
+          const zInicio  = -0.3;
+          const zFin     =  0.3;
+
+          function tick(ahora) {
+            const progreso = Math.min((ahora - inicio) / duracion, 1);
+            const z = zInicio + (zFin - zInicio) * progreso;
+            avatar.setAttribute("position", "0 -0.25 " + z.toFixed(4));
+
+            if (progreso < 1) {
+              rafId = requestAnimationFrame(tick);
+            } else {
+              // Animación terminada — iniciar mixer
+              const mixer = avatar.components["animation-mixer"];
+              if (mixer) mixer.play();
+              onDone();
+            }
+          }
+
+          rafId = requestAnimationFrame(tick);
+        }
+
+        // --------------------------------------------------
+        // Animación del portfolio: Y de -0.6 a 0
+        // --------------------------------------------------
+        function animarPortfolio(onDone) {
+          const duracion = 750;
+          const inicio   = performance.now();
+          const yInicio  = -0.6;
+          const yFin     =  0;
+
+          portfolio.setAttribute("visible", true);
+
+          function tick(ahora) {
+            const progreso = Math.min((ahora - inicio) / duracion, 1);
+            const y = yInicio + (yFin - yInicio) * progreso;
+            portfolio.setAttribute("position", "0 " + y.toFixed(4) + " 0.01");
+
+            if (progreso < 1) {
+              rafId = requestAnimationFrame(tick);
+            } else {
+              onDone();
+            }
+          }
+
+          rafId = requestAnimationFrame(tick);
+        }
+
+        // --------------------------------------------------
+        // Reset completo del estado del target 2
+        // --------------------------------------------------
+        function resetEstado() {
+          // Cancelar animaciones en curso
+          if (rafId) {
+            cancelAnimationFrame(rafId);
+            rafId = null;
+          }
+          animando = false;
+          currentItem = 0;
+
+          // Avatar
+          avatar.setAttribute("visible", false);
+          avatar.setAttribute("position", "0 -0.25 -0.3");
+
+          // Portfolio
+          portfolio.setAttribute("visible", false);
+          portfolio.setAttribute("position", "0 -0.6 0.01");
+          btnIzquierda.setAttribute("visible", false);
+          btnDerecha.setAttribute("visible", false);
+
+          // Carrusel — volver al item 0
+          mostrarItem(0);
+
+          // Botón web
+          btnWeb.setAttribute("visible", false);
+        }
+
+        // --------------------------------------------------
+        // targetFound — secuencia: avatar → portfolio → botones → web
+        // --------------------------------------------------
+        this.el.addEventListener("targetFound", function () {
+          console.log("Target 2 encontrado");
+          if (animando) return;
+          animando = true;
+
+          overlay.classList.add("hidden");
+
+          // Resetear posiciones sin ocultar (estado limpio)
+          avatar.setAttribute("position", "0 -0.25 -0.3");
+          avatar.setAttribute("visible", true);
+          portfolio.setAttribute("position", "0 -0.6 0.01");
+          portfolio.setAttribute("visible", false);
+          btnWeb.setAttribute("visible", false);
+
+          // FASE 1: animar avatar
+          animarAvatar(function () {
+            setTimeout(function () {
+
+              // FASE 2: animar portfolio
+              animarPortfolio(function () {
+
+                // Ocultar avatar, mostrar botones de navegación
+                avatar.setAttribute("visible", false);
+                btnIzquierda.setAttribute("visible", true);
+                btnDerecha.setAttribute("visible", true);
+                animando = false;
+
+                setTimeout(function () {
+                  // FASE 3: mostrar botón web
+                  btnWeb.setAttribute("visible", true);
+                }, 300);
+
+              });
+
+            }, 300);
+          });
+        });
+
+        // --------------------------------------------------
+        // targetLost — reset completo
+        // --------------------------------------------------
+        this.el.addEventListener("targetLost", function () {
+          console.log("Target 2 perdido");
+          resetEstado();
+          overlay.classList.remove("hidden");
+        });
+
+        // --------------------------------------------------
+        // Navegación del carrusel — listeners únicos
+        // --------------------------------------------------
+        btnIzquierda.addEventListener("click", function () {
+          currentItem = (currentItem + 1) % 3;
+          mostrarItem(currentItem);
+        });
+
+        btnDerecha.addEventListener("click", function () {
+          currentItem = (currentItem - 1 + 3) % 3;
+          mostrarItem(currentItem);
+        });
+
+        // --------------------------------------------------
+        // Botón web — redirección
+        // --------------------------------------------------
+        btnWeb.addEventListener("click", function () {
+          window.location.href = "https://pideenlinea.elcorral.com/";
+        });
+
+      }
+    });
+
+
+    // =====================================================
+    // LÓGICA DE INICIO — pantalla completa sensitiva al toque
+    // =====================================================
+    document.addEventListener("DOMContentLoaded", function () {
+
+      const sceneEl     = document.querySelector("a-scene");
+      const touchOverlay = document.querySelector("#touch-overlay");
+      const scanOverlay  = document.querySelector("#example-scanning-overlay");
+      const mytarget0   = document.querySelector("#mytarget0");
+      const mytarget1   = document.querySelector("#mytarget1");
+      const mytarget2   = document.querySelector("#mytarget2");
+
+      let isStarted = false;
+
+      // Asignar componentes controladores
+      mytarget0.setAttribute("target0-controller", "");
+      mytarget1.setAttribute("target1-controller", "");
+      mytarget2.setAttribute("target2-controller", "");
+
+      // Toque en cualquier parte de la pantalla
+      touchOverlay.addEventListener("click", async function () {
+        if (isStarted) return;
+        isStarted = true;
+
+        // TRUCO iOS — desbloquear contexto de audio en el mismo gesto
+        const audio = document.querySelector("#mySound");
+        if (audio) {
+          audio.muted = true;
+          try {
+            await audio.play();
+            audio.pause();
+          } catch (e) {}
+          audio.muted = false;
+          audio.currentTime = 0;
+        }
+
+        // Ocultar overlay con transición suave
+        touchOverlay.classList.add("oculto");
+
+        // Mostrar overlay de escaneo
+        scanOverlay.classList.remove("hidden");
+
+      }, { once: true });
+
+      // AR listo
+      sceneEl.addEventListener("arReady", function () {
+        console.log("AR listo");
+      });
+
+      // AR error
+      sceneEl.addEventListener("arError", function (event) {
+        console.error("AR error:", event);
+        isStarted = false;
+        touchOverlay.classList.remove("oculto");
+        scanOverlay.classList.add("hidden");
+        alert("No se pudo acceder a la cámara. Verifica los permisos e intenta de nuevo.");
+      });
+
+    });
+
+  </script>
+
+</body>
+</html>
